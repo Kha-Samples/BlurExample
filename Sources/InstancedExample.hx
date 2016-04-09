@@ -2,7 +2,13 @@ package;
 
 import kha.Framebuffer;
 import kha.Color;
+import kha.Image;
+import kha.Scaler;
+import kha.System;
+import kha.graphics4.BlendingFactor;
 import kha.graphics4.CullMode;
+import kha.graphics4.DepthStencilFormat;
+import kha.graphics4.TextureFormat;
 import kha.math.Random;
 import kha.math.Vector3;
 import kha.math.Vector4;
@@ -39,6 +45,9 @@ class InstancedExample {
 	var vertexBuffers: Array<VertexBuffer>;
 	var indexBuffer: IndexBuffer;
 	var pipeline: PipelineState;
+	
+	var renderTarget: Image;
+	var blurPipeline: PipelineState;
 
 	public function new() {
 		Random.init(Std.random(403));
@@ -130,10 +139,30 @@ class InstancedExample {
 		pipeline.depthMode = CompareMode.Less;
 		pipeline.cullMode = CullMode.CounterClockwise;
 		pipeline.compile();
+		
+		renderTarget = Image.createRenderTarget(800, 600, TextureFormat.RGBA32, DepthStencilFormat.DepthAutoStencilAuto);
+		
+		// Pipeline definition copied from kha.graphics4.ImageShaderPainter
+		blurPipeline = new PipelineState();
+		blurPipeline.fragmentShader = Shaders.blur_image_frag;
+		blurPipeline.vertexShader = Shaders.painter_image_vert;
+
+		var structure = new VertexStructure();
+		structure.add("vertexPosition", VertexData.Float3);
+		structure.add("texPosition", VertexData.Float2);
+		structure.add("vertexColor", VertexData.Float4);
+		blurPipeline.inputLayout = [structure];
+		
+		blurPipeline.blendSource = BlendingFactor.BlendOne;
+		blurPipeline.blendDestination = BlendingFactor.InverseSourceAlpha;
+		blurPipeline.alphaBlendSource = BlendingFactor.SourceAlpha;
+		blurPipeline.alphaBlendDestination = BlendingFactor.InverseSourceAlpha;
+		
+		blurPipeline.compile();
     }
 
 	public function render(frame: Framebuffer) {
-		var g = frame.g4;
+		var g = renderTarget.g4;
 		
 		// Move camera and update view matrix
 		var newCameraPos = Matrix4.rotationY(Scheduler.time() / 4).multvec(cameraStart);
@@ -174,8 +203,8 @@ class InstancedExample {
 		vertexBuffers[2].unlock();
 		
         g.begin();
-		g.clear(Color.fromFloats(1, 0.75, 0));
 		g.setPipeline(pipeline);
+		g.clear(Color.fromFloats(1, 0.75, 0), 1000.0);
 		
 		// Instanced rendering
 		if (g.instancedRenderingAvailable()) {
@@ -196,6 +225,11 @@ class InstancedExample {
 		}
 		
 		g.end();
+		
+		frame.g2.begin();
+		frame.g2.pipeline = blurPipeline;
+		frame.g2.drawImage(renderTarget, 0, 0);
+		frame.g2.end();
     }
 	
 	public function update() {
