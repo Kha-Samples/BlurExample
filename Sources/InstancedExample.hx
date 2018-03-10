@@ -228,7 +228,7 @@ class InstancedExample {
 		
 		frame.g2.begin();
 		frame.g2.pipeline = blurPipeline;
-		frame.g2.drawImage(renderTarget, 0, 0);
+		Scaler.scale(renderTarget, frame, g.renderTargetsInvertedY() ? Rotation180 : RotationNone);
 		frame.g2.end();
     }
 	

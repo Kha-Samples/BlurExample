@@ -1,9 +1,9 @@
-#ifdef GL_ES
-precision mediump float;
-#endif
+#version 450
 
-varying vec3 fragmentColor;
+in vec3 fragmentColor;
 
-void kore() {
-	gl_FragColor = vec4(fragmentColor, 1.0);
+out vec4 frag;
+
+void main() {
+	frag = vec4(fragmentColor, 1.0);
 }
